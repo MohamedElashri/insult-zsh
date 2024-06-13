@@ -35,6 +35,17 @@ There are several ways to install the Insult ZSH plugin:
 
 2. Restart your terminal or run `source ~/.zshrc` to reload the configuration.
 
+### Using Zinit
+
+1. Add the following line to your `.zshrc` file:
+
+   ```
+   zinit light MohamedElashri/insult-zsh
+   ```
+
+2. Restart your terminal or run `source ~/.zshrc` to apply the changes.
+
+
 ### Manual Installation
 
 1. Clone the repository to a directory of your choice:
