@@ -1136,8 +1136,21 @@ _zsh_roast_display() {
 # command_not_found_handler, usually for package suggestions.
 #
 # Preserve it instead of replacing it.
+# Only capture it on the first load, or we would save our own handler and
+# recursively call it after sourcing this plugin again.
 
-if (( ${+functions[command_not_found_handler]} )) &&
+# Repair shells where an earlier reload already saved our handler as its own
+# predecessor. Otherwise every failed command keeps printing another roast.
+if (( ${+functions[_zsh_roast_previous_command_not_found_handler]} )) &&
+   [[ "${functions[_zsh_roast_previous_command_not_found_handler]}" ==
+      "${functions[command_not_found_handler]}" ]]; then
+  unfunction _zsh_roast_previous_command_not_found_handler
+  typeset -gi _ZSH_ROAST_HANDLER_INSTALLED=1
+fi
+
+if (( ! ${_ZSH_ROAST_HANDLER_INSTALLED:-0} )) &&
+   (( ${+functions[command_not_found_handler]} )) &&
+   [[ "${functions[command_not_found_handler]}" != *'_zsh_roast_display "$command_name"'* ]] &&
    (( ! ${+functions[_zsh_roast_previous_command_not_found_handler]} )); then
 
   functions[_zsh_roast_previous_command_not_found_handler]=\
@@ -1149,6 +1162,10 @@ fi
 # =============================================================================
 
 command_not_found_handler() {
+  # A preserved handler may delegate back to this handler. Zsh's dynamic
+  # scoping keeps this guard active throughout that call chain.
+  (( ${_ZSH_ROAST_HANDLER_ACTIVE:-0} )) && return 127
+  local -i _ZSH_ROAST_HANDLER_ACTIVE=1
   local command_name="$1"
   local -i previous_status
 
@@ -1165,6 +1182,8 @@ command_not_found_handler() {
 
   return 127
 }
+
+typeset -gi _ZSH_ROAST_HANDLER_INSTALLED=1
 
 # =============================================================================
 # INITIALIZATION
