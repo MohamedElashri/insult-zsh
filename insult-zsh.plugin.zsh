@@ -1,12 +1,21 @@
 # zsh-roast.plugin.zsh
 #
-# A context-aware command-not-found handler for Zsh.
+# A fast, context-aware command-not-found handler for Zsh.
 #
 # Supported:
 #   - Linux
 #   - macOS
 #
-# No external dependencies.
+# Features:
+#   - Random technical roasts
+#   - Context-aware jokes
+#   - Fast typo detection
+#   - Damerau-Levenshtein distance
+#   - "Did you mean?" suggestions
+#   - Cached installed-command index
+#   - Preserves existing command_not_found_handler
+#   - No external dependencies
+#
 # Everything is configured in this file.
 
 # =============================================================================
@@ -21,6 +30,7 @@
 typeset -gi ZSH_ROAST_LEVEL=2
 
 # Percentage chance of displaying a roast.
+# Range: 0-100
 typeset -gi ZSH_ROAST_CHANCE=100
 
 # Theme:
@@ -30,37 +40,46 @@ typeset -gi ZSH_ROAST_CHANCE=100
 #   science
 typeset -g ZSH_ROAST_THEME="mixed"
 
-# Show the failed command.
+# Show the command that failed.
 typeset -gi ZSH_ROAST_SHOW_COMMAND=1
 
-# Enable ANSI colors when supported.
+# Enable ANSI colors.
 typeset -gi ZSH_ROAST_COLOR=1
 
-# Prefer command-specific jokes.
+# Enable command-specific jokes.
 typeset -gi ZSH_ROAST_CONTEXTUAL=1
 
-# Avoid immediately repeating random roasts.
+# Avoid immediately repeating the same random roast.
 typeset -gi ZSH_ROAST_AVOID_REPEATS=1
 
 # Enable typo inference.
 typeset -gi ZSH_ROAST_TYPO_DETECTION=1
 
-# Maximum Damerau-Levenshtein distance:
-#   1 = conservative
-#   2 = recommended
-#   3 = aggressive
-typeset -gi ZSH_ROAST_MAX_TYPO_DISTANCE=2
+# Damerau-Levenshtein distance.
+#
+# 1 is recommended:
+#
+#   gti      -> git
+#   pyhton   -> python
+#   cmkae    -> cmake
+#   kubectll -> kubectl
+#   ffproeb  -> ffprobe
+#
+# all count as distance 1 because adjacent transpositions count as one edit.
+typeset -gi ZSH_ROAST_MAX_TYPO_DISTANCE=1
 
-# Show "Did you mean: ...?"
+# Show:
+#
+#   Did you mean: git?
 typeset -gi ZSH_ROAST_SHOW_SUGGESTION=1
 
-# Search installed commands known to Zsh when no contextual match wins.
+# If no curated contextual command matches, search installed commands.
 typeset -gi ZSH_ROAST_SEARCH_INSTALLED_COMMANDS=1
 
-# For longer commands, installed-command search requires matching first char.
-typeset -gi ZSH_ROAST_FIRST_CHAR_FILTER_LENGTH=5
+# Build an installed-command typo index once when this plugin loads.
+typeset -gi ZSH_ROAST_BUILD_COMMAND_INDEX=1
 
-# Custom messages.
+# User-defined extra messages.
 typeset -ga ZSH_ROAST_CUSTOM=(
   "CERN computing has seen enough for today."
   "Linus would like a word."
@@ -72,16 +91,19 @@ typeset -ga ZSH_ROAST_CUSTOM=(
 
 typeset -g _ZSH_ROAST_LAST_MESSAGE=""
 typeset -g _ZSH_ROAST_LAST_SUGGESTION=""
-
-# Detect OS without invoking uname.
-#
-# Zsh exposes $OSTYPE on both Linux and macOS:
-#
-#   linux-gnu
-#   darwin23.0
-#   darwin24.0
-#   ...
 typeset -g _ZSH_ROAST_OS="other"
+
+# Indexed installed commands.
+#
+# Key:
+#
+#   first-character:length
+#
+# Example:
+#
+#   f:6 -> "ffmpeg fooctl ..."
+#
+typeset -gA _ZSH_ROAST_COMMAND_INDEX
 
 case "$OSTYPE" in
   darwin*)
@@ -268,9 +290,8 @@ typeset -ga ZSH_ROAST_CONTEXT_COMMANDS=(
   zsh
   bash
 
-  nvcc
-
   root
+  nvcc
 
   ffmpeg
   ffprobe
@@ -333,20 +354,23 @@ _zsh_roast_setup_colors() {
 # =============================================================================
 
 _zsh_roast_validate_config() {
-  (( ZSH_ROAST_LEVEL < 0 )) && ZSH_ROAST_LEVEL=0
-  (( ZSH_ROAST_LEVEL > 3 )) && ZSH_ROAST_LEVEL=3
+  (( ZSH_ROAST_LEVEL < 0 )) &&
+    ZSH_ROAST_LEVEL=0
 
-  (( ZSH_ROAST_CHANCE < 0 )) && ZSH_ROAST_CHANCE=0
-  (( ZSH_ROAST_CHANCE > 100 )) && ZSH_ROAST_CHANCE=100
+  (( ZSH_ROAST_LEVEL > 3 )) &&
+    ZSH_ROAST_LEVEL=3
+
+  (( ZSH_ROAST_CHANCE < 0 )) &&
+    ZSH_ROAST_CHANCE=0
+
+  (( ZSH_ROAST_CHANCE > 100 )) &&
+    ZSH_ROAST_CHANCE=100
 
   (( ZSH_ROAST_MAX_TYPO_DISTANCE < 0 )) &&
     ZSH_ROAST_MAX_TYPO_DISTANCE=0
 
   (( ZSH_ROAST_MAX_TYPO_DISTANCE > 3 )) &&
     ZSH_ROAST_MAX_TYPO_DISTANCE=3
-
-  (( ZSH_ROAST_FIRST_CHAR_FILTER_LENGTH < 1 )) &&
-    ZSH_ROAST_FIRST_CHAR_FILTER_LENGTH=1
 
   case "$ZSH_ROAST_THEME" in
     mixed|unix|programmer|science)
@@ -358,10 +382,46 @@ _zsh_roast_validate_config() {
 }
 
 # =============================================================================
+# COMMAND INDEX
+# =============================================================================
+
+# Build the installed-command index once.
+#
+# We intentionally do not call rehash here or during failures.
+#
+# Zsh already knows the commands available when this plugin is sourced.
+#
+# The index dramatically reduces typo-search work. Instead of comparing
+# against every installed executable, typo lookup only examines commands
+# with:
+#
+#   - the same first character
+#   - approximately the same length
+
+_zsh_roast_build_command_index() {
+  local cmd
+  local key
+
+  _ZSH_ROAST_COMMAND_INDEX=()
+
+  for cmd in ${(k)commands}; do
+    [[ -n "$cmd" ]] || continue
+
+    key="${cmd[1]}:${#cmd}"
+
+    if [[ -n "${_ZSH_ROAST_COMMAND_INDEX[$key]:-}" ]]; then
+      _ZSH_ROAST_COMMAND_INDEX[$key]+=" $cmd"
+    else
+      _ZSH_ROAST_COMMAND_INDEX[$key]="$cmd"
+    fi
+  done
+}
+
+# =============================================================================
 # DAMERAU-LEVENSHTEIN DISTANCE
 # =============================================================================
 
-# Optimal-string-alignment Damerau-Levenshtein distance.
+# Optimal-string-alignment variant.
 #
 # Counts:
 #
@@ -370,11 +430,7 @@ _zsh_roast_validate_config() {
 #   substitution
 #   adjacent transposition
 #
-# Examples:
-#
-#   gti    -> git     = 1
-#   pyhton -> python  = 1
-#   cmkae  -> cmake   = 1
+# Result is returned through $REPLY to avoid command substitutions.
 
 _zsh_roast_distance() {
   local a="$1"
@@ -384,7 +440,9 @@ _zsh_roast_distance() {
   local -i len_a=${#a}
   local -i len_b=${#b}
 
-  local -i i j
+  local -i i
+  local -i j
+
   local -i cost
   local -i deletion
   local -i insertion
@@ -398,22 +456,24 @@ _zsh_roast_distance() {
   local -a current
 
   if [[ "$a" == "$b" ]]; then
-    print -r -- 0
+    REPLY=0
     return 0
   fi
 
   if (( len_a == 0 )); then
-    print -r -- "$len_b"
+    REPLY=$len_b
     return 0
   fi
 
   if (( len_b == 0 )); then
-    print -r -- "$len_a"
+    REPLY=$len_a
     return 0
   fi
 
-  if (( len_a - len_b > max || len_b - len_a > max )); then
-    print -r -- $(( max + 1 ))
+  # Length difference is already a lower bound.
+  if (( len_a - len_b > max ||
+        len_b - len_a > max )); then
+    REPLY=$(( max + 1 ))
     return 0
   fi
 
@@ -431,6 +491,7 @@ _zsh_roast_distance() {
     row_min=$i
 
     for (( j = 1; j <= len_b; ++j )); do
+
       if [[ "${a[i]}" == "${b[j]}" ]]; then
         cost=0
       else
@@ -449,6 +510,7 @@ _zsh_roast_distance() {
       (( substitution < value )) &&
         value=$substitution
 
+      # Adjacent transposition.
       if (( i > 1 && j > 1 )) &&
          [[ "${a[i]}" == "${b[j - 1]}" ]] &&
          [[ "${a[i - 1]}" == "${b[j]}" ]]; then
@@ -465,8 +527,9 @@ _zsh_roast_distance() {
         row_min=$value
     done
 
+    # Early abort when no match within the threshold remains plausible.
     if (( row_min > max )); then
-      print -r -- $(( max + 1 ))
+      REPLY=$(( max + 1 ))
       return 0
     fi
 
@@ -474,44 +537,168 @@ _zsh_roast_distance() {
     previous=("${current[@]}")
   done
 
-  print -r -- "${previous[$(( len_b + 1 ))]}"
+  REPLY="${previous[$(( len_b + 1 ))]}"
 }
 
 # =============================================================================
-# CANDIDATE DISTANCE
+# CONTEXTUAL TYPO SEARCH
 # =============================================================================
 
-_zsh_roast_candidate_distance() {
-  local typed="$1"
-  local candidate="$2"
-  local -i max="$3"
+_zsh_roast_find_contextual_typo() {
+  local typed="${1:t}"
+  local candidate
+  local best=""
+  local second_best=""
 
-  local -i typed_len=${#typed}
-  local -i candidate_len=${#candidate}
-  local -i difference
+  local -i max="$ZSH_ROAST_MAX_TYPO_DISTANCE"
   local -i distance
+  local -i best_distance=$(( max + 1 ))
+  local -i second_best_distance=$(( max + 1 ))
 
-  [[ -n "$candidate" ]] || return 1
-  [[ "$typed" == "$candidate" ]] && return 1
+  for candidate in "${ZSH_ROAST_CONTEXT_COMMANDS[@]}"; do
 
-  difference=$(( typed_len - candidate_len ))
-  (( difference < 0 )) &&
-    difference=$(( -difference ))
+    [[ "$typed" == "$candidate" ]] &&
+      continue
 
-  (( difference > max )) &&
-    return 1
+    # Cheap length rejection.
+    if (( ${#typed} - ${#candidate} > max ||
+          ${#candidate} - ${#typed} > max )); then
+      continue
+    fi
 
-  distance="$(
+    # For longer commands, require the first character to match.
+    if (( ${#typed} >= 5 )) &&
+       [[ "${typed[1]}" != "${candidate[1]}" ]]; then
+      continue
+    fi
+
     _zsh_roast_distance \
       "$typed" \
       "$candidate" \
       "$max"
-  )"
 
-  (( distance <= max )) ||
+    distance=$REPLY
+
+    (( distance <= max )) ||
+      continue
+
+    if (( distance < best_distance )); then
+
+      second_best="$best"
+      second_best_distance=$best_distance
+
+      best="$candidate"
+      best_distance=$distance
+
+    elif [[ "$candidate" != "$best" ]] &&
+         (( distance < second_best_distance )); then
+
+      second_best="$candidate"
+      second_best_distance=$distance
+    fi
+  done
+
+  [[ -n "$best" ]] ||
     return 1
 
-  print -r -- "$distance"
+  # Avoid ambiguous guesses.
+  if [[ -n "$second_best" ]] &&
+     (( second_best_distance == best_distance )); then
+    return 1
+  fi
+
+  REPLY="$best"
+  return 0
+}
+
+# =============================================================================
+# INSTALLED-COMMAND TYPO SEARCH
+# =============================================================================
+
+_zsh_roast_find_installed_typo() {
+  local typed="${1:t}"
+
+  local -i max="$ZSH_ROAST_MAX_TYPO_DISTANCE"
+  local -i typed_len=${#typed}
+  local -i length
+  local -i distance
+
+  local first="${typed[1]}"
+  local key
+  local candidates
+  local candidate
+
+  local best=""
+  local second_best=""
+
+  local -i best_distance=$(( max + 1 ))
+  local -i second_best_distance=$(( max + 1 ))
+
+  (( ${#typed} >= 3 )) ||
+    return 1
+
+  # Search only buckets with:
+  #
+  #   same first character
+  #   length +/- max distance
+
+  for (( length = typed_len - max;
+         length <= typed_len + max;
+         ++length )); do
+
+    (( length > 0 )) ||
+      continue
+
+    key="${first}:${length}"
+
+    candidates="${_ZSH_ROAST_COMMAND_INDEX[$key]:-}"
+
+    [[ -n "$candidates" ]] ||
+      continue
+
+    for candidate in ${(z)candidates}; do
+
+      [[ "$candidate" == "$typed" ]] &&
+        continue
+
+      _zsh_roast_distance \
+        "$typed" \
+        "$candidate" \
+        "$max"
+
+      distance=$REPLY
+
+      (( distance <= max )) ||
+        continue
+
+      if (( distance < best_distance )); then
+
+        second_best="$best"
+        second_best_distance=$best_distance
+
+        best="$candidate"
+        best_distance=$distance
+
+      elif [[ "$candidate" != "$best" ]] &&
+           (( distance < second_best_distance )); then
+
+        second_best="$candidate"
+        second_best_distance=$distance
+      fi
+    done
+  done
+
+  [[ -n "$best" ]] ||
+    return 1
+
+  # If two candidates are equally plausible, do not guess.
+  if [[ -n "$second_best" ]] &&
+     (( second_best_distance == best_distance )); then
+    return 1
+  fi
+
+  REPLY="$best"
+  return 0
 }
 
 # =============================================================================
@@ -521,123 +708,25 @@ _zsh_roast_candidate_distance() {
 _zsh_roast_find_typo() {
   local typed="${1:t}"
 
-  local candidate
-  local best=""
-  local second_best=""
-
-  local -i distance
-  local -i best_distance
-  local -i second_best_distance
-  local -i max="$ZSH_ROAST_MAX_TYPO_DISTANCE"
-
   (( ZSH_ROAST_TYPO_DETECTION )) ||
     return 1
 
-  (( max > 0 )) ||
+  (( ZSH_ROAST_MAX_TYPO_DISTANCE > 0 )) ||
     return 1
 
-  # Very short commands generate too many false positives.
   (( ${#typed} >= 3 )) ||
     return 1
 
-  best_distance=$(( max + 1 ))
-  second_best_distance=$(( max + 1 ))
-
-  # -------------------------------------------------------------------------
-  # Phase 1: contextual commands
-  # -------------------------------------------------------------------------
-
-  for candidate in "${ZSH_ROAST_CONTEXT_COMMANDS[@]}"; do
-    distance="$(
-      _zsh_roast_candidate_distance \
-        "$typed" \
-        "$candidate" \
-        "$max"
-    )" || continue
-
-    if (( distance < best_distance )); then
-      second_best="$best"
-      second_best_distance=$best_distance
-
-      best="$candidate"
-      best_distance=$distance
-
-    elif [[ "$candidate" != "$best" ]] &&
-         (( distance < second_best_distance )); then
-      second_best="$candidate"
-      second_best_distance=$distance
-    fi
-  done
-
-  # Distance 1 against one of our high-value contextual commands is
-  # sufficiently strong to accept directly.
-  if [[ -n "$best" ]] &&
-     (( best_distance == 1 )); then
-    print -r -- "$best"
+  # Fast path:
+  # search our small curated command set first.
+  if _zsh_roast_find_contextual_typo "$typed"; then
     return 0
   fi
 
-  # -------------------------------------------------------------------------
-  # Phase 2: commands currently known to Zsh
-  # -------------------------------------------------------------------------
-
-  if (( ZSH_ROAST_SEARCH_INSTALLED_COMMANDS )); then
-
-    # Refresh the Zsh command hash.
-    #
-    # `rehash` is a Zsh builtin. This is portable between Linux and macOS
-    # and does not spawn any external utilities.
-    rehash
-
-    for candidate in ${(k)commands}; do
-      [[ -n "$candidate" ]] ||
-        continue
-
-      [[ "$typed" == "$candidate" ]] &&
-        continue
-
-      # Cheap first-character heuristic for longer names.
-      if (( ${#typed} >= ZSH_ROAST_FIRST_CHAR_FILTER_LENGTH )) &&
-         [[ "${typed[1]}" != "${candidate[1]}" ]]; then
-        continue
-      fi
-
-      distance="$(
-        _zsh_roast_candidate_distance \
-          "$typed" \
-          "$candidate" \
-          "$max"
-      )" || continue
-
-      if (( distance < best_distance )); then
-        second_best="$best"
-        second_best_distance=$best_distance
-
-        best="$candidate"
-        best_distance=$distance
-
-      elif [[ "$candidate" != "$best" ]] &&
-           (( distance < second_best_distance )); then
-        second_best="$candidate"
-        second_best_distance=$distance
-      fi
-    done
-  fi
-
-  [[ -n "$best" ]] ||
+  (( ZSH_ROAST_SEARCH_INSTALLED_COMMANDS )) ||
     return 1
 
-  (( best_distance <= max )) ||
-    return 1
-
-  # If two candidates tie at distance > 1, decline to guess.
-  if (( best_distance > 1 )) &&
-     [[ -n "$second_best" ]] &&
-     (( second_best_distance == best_distance )); then
-    return 1
-  fi
-
-  print -r -- "$best"
+  _zsh_roast_find_installed_typo "$typed"
 }
 
 # =============================================================================
@@ -841,13 +930,14 @@ _zsh_roast_contextual() {
 }
 
 # =============================================================================
-# BUILD MESSAGE POOL
+# BUILD RANDOM MESSAGE POOL
 # =============================================================================
 
 _zsh_roast_build_pool() {
   local -a pool
 
   case "$ZSH_ROAST_THEME" in
+
     unix)
       pool=(
         "${ZSH_ROAST_UNIX[@]}"
@@ -868,6 +958,7 @@ _zsh_roast_build_pool() {
 
     mixed|*)
       case "$ZSH_ROAST_LEVEL" in
+
         1)
           pool=(
             "${ZSH_ROAST_DRY[@]}"
@@ -923,6 +1014,7 @@ _zsh_roast_pick() {
     return 1
 
   while (( attempts < max_attempts )); do
+
     index=$(( RANDOM % ${#pool[@]} + 1 ))
     roast="${pool[$index]}"
 
@@ -936,8 +1028,9 @@ _zsh_roast_pick() {
   done
 
   _ZSH_ROAST_LAST_MESSAGE="$roast"
+  REPLY="$roast"
 
-  print -r -- "$roast"
+  return 0
 }
 
 # =============================================================================
@@ -951,29 +1044,38 @@ _zsh_roast_select_message() {
 
   _ZSH_ROAST_LAST_SUGGESTION=""
 
-  if (( ZSH_ROAST_TYPO_DETECTION )); then
-    intended="$(_zsh_roast_find_typo "$typed")" ||
-      intended=""
+  # Infer likely intended command.
+  if _zsh_roast_find_typo "$typed"; then
+    intended="$REPLY"
   fi
 
+  # Prefer a contextual roast based on the inferred command.
   if [[ -n "$intended" ]]; then
+
     _ZSH_ROAST_LAST_SUGGESTION="$intended"
 
     if (( ZSH_ROAST_CONTEXTUAL )); then
-      roast="$(_zsh_roast_contextual "$intended")" && {
+
+      roast="$(_zsh_roast_contextual "$intended")"
+
+      if [[ -n "$roast" ]]; then
         _ZSH_ROAST_LAST_MESSAGE="$roast"
-        print -r -- "$roast"
+        REPLY="$roast"
         return 0
-      }
+      fi
     fi
   fi
 
+  # Direct contextual match.
   if (( ZSH_ROAST_CONTEXTUAL )); then
-    roast="$(_zsh_roast_contextual "$typed")" && {
+
+    roast="$(_zsh_roast_contextual "$typed")"
+
+    if [[ -n "$roast" ]]; then
       _ZSH_ROAST_LAST_MESSAGE="$roast"
-      print -r -- "$roast"
+      REPLY="$roast"
       return 0
-    }
+    fi
   fi
 
   _zsh_roast_pick
@@ -993,8 +1095,10 @@ _zsh_roast_display() {
   (( RANDOM % 100 < ZSH_ROAST_CHANCE )) ||
     return 0
 
-  roast="$(_zsh_roast_select_message "$command_name")" ||
+  _zsh_roast_select_message "$command_name" ||
     return 0
+
+  roast="$REPLY"
 
   printf '\n' >&2
 
@@ -1005,6 +1109,7 @@ _zsh_roast_display() {
     "$ZSH_ROAST_RESET" >&2
 
   if (( ZSH_ROAST_SHOW_COMMAND )); then
+
     printf '%scommand not found: %s%s\n' \
       "$ZSH_ROAST_DIM" \
       "$command_name" \
@@ -1027,10 +1132,10 @@ _zsh_roast_display() {
 # PRESERVE EXISTING COMMAND-NOT-FOUND HANDLER
 # =============================================================================
 
-# Ubuntu, Debian, Oh My Zsh plugins, and other environments may already
-# provide command_not_found_handler.
+# Some Linux distributions and Zsh frameworks already provide a
+# command_not_found_handler, usually for package suggestions.
 #
-# Preserve it rather than silently replacing it.
+# Preserve it instead of replacing it.
 
 if (( ${+functions[command_not_found_handler]} )) &&
    (( ! ${+functions[_zsh_roast_previous_command_not_found_handler]} )); then
@@ -1047,12 +1152,10 @@ command_not_found_handler() {
   local command_name="$1"
   local -i previous_status
 
-  _zsh_roast_validate_config
-  _zsh_roast_setup_colors
-
   _zsh_roast_display "$command_name"
 
   if (( ${+functions[_zsh_roast_previous_command_not_found_handler]} )); then
+
     _zsh_roast_previous_command_not_found_handler "$@"
     previous_status=$?
 
@@ -1069,3 +1172,7 @@ command_not_found_handler() {
 
 _zsh_roast_validate_config
 _zsh_roast_setup_colors
+
+if (( ZSH_ROAST_BUILD_COMMAND_INDEX )); then
+  _zsh_roast_build_command_index
+fi
