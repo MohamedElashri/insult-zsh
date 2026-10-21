@@ -1,102 +1,76 @@
 #!/usr/bin/env zsh
 # Run with: zsh -f tests/multilingual.zsh
+
 emulate -L zsh
 setopt no_unset
 
 local_dir="${0:A:h}"
 source "$local_dir/../insult-zsh.plugin.zsh"
-
 typeset -gi failures=0
 
-check_language() {
+check_non_english() {
   local typed="$1"
-  local expected="$2"
-  if ! _zsh_roast_detect_language "$typed"; then
-    print -u2 -r -- "FAIL: '$typed' not recognized as $expected"
-    (( failures++ ))
-    return
-  fi
-  if [[ "$REPLY" != "$expected" ]]; then
-    print -u2 -r -- "FAIL: '$typed' recognized as '$REPLY', expected '$expected'"
+  if ! _zsh_roast_is_non_english "$typed"; then
+    print -u2 -r -- "FAIL: '$typed' not recognized as non-English"
     (( failures++ ))
   fi
 }
 
-check_language "مرحبا" arabic
-check_language "привет" cyrillic
-check_language "γειά" greek
-check_language "你好" chinese
-check_language "こんにちは" japanese
-check_language "한글" korean
-check_language "नमस्ते" devanagari
-check_language "café" latin
-check_language "bonjour" french
-check_language "HOLA" spanish
-check_language "hallo" german
-check_language "ciao" italian
+# All non-ASCII scripts should trigger the same generic treatment.
+for typed in "مرحبا" "привет" "γειά" "你好" "こんにちは" "한글" "नमस्ते" "café" "🙂"; do
+  check_non_english "$typed"
+done
 
-if _zsh_roast_detect_language "qwerty"; then
-  print -u2 -r -- "FAIL: unrecognized ASCII word falsely identified"
-  (( failures++ ))
-fi
+# Common ASCII-only words remain recognized without language classification.
+for typed in bonjour BONJOUR hola hallo ciao gracias danke grazie; do
+  check_non_english "$typed"
+done
 
+for typed in git gti python3 qwerty ''; do
+  if _zsh_roast_is_non_english "$typed"; then
+    print -u2 -r -- "FAIL: '$typed' incorrectly recognized as non-English"
+    (( failures++ ))
+  fi
+done
 
-# All curated language-specific roast messages must remain ASCII English.
-# Non-English characters remain valid in commands, but not roast text.
-typeset -a all_language_roasts=(
-  "${ZSH_ROAST_LANGUAGE_ARABIC[@]}"
-  "${ZSH_ROAST_LANGUAGE_CYRILLIC[@]}"
-  "${ZSH_ROAST_LANGUAGE_GREEK[@]}"
-  "${ZSH_ROAST_LANGUAGE_CHINESE[@]}"
-  "${ZSH_ROAST_LANGUAGE_JAPANESE[@]}"
-  "${ZSH_ROAST_LANGUAGE_KOREAN[@]}"
-  "${ZSH_ROAST_LANGUAGE_DEVANAGARI[@]}"
-  "${ZSH_ROAST_LANGUAGE_LATIN[@]}"
-  "${ZSH_ROAST_LANGUAGE_FRENCH[@]}"
-  "${ZSH_ROAST_LANGUAGE_SPANISH[@]}"
-  "${ZSH_ROAST_LANGUAGE_GERMAN[@]}"
-  "${ZSH_ROAST_LANGUAGE_ITALIAN[@]}"
-)
-for roast in "${all_language_roasts[@]}"; do
+# Every shared roast must be written in printable ASCII English.
+for roast in "${ZSH_ROAST_NON_ENGLISH_MESSAGES[@]}"; do
   if [[ "$roast" =~ '[^ -~]' ]]; then
-    print -u2 -r -- "FAIL: found non-ASCII characters in a roast: $roast"
+    print -u2 -r -- "FAIL: non-ASCII roast message: $roast"
     (( failures++ ))
   fi
 done
 
-# The selected message must also be in English for every detected script.
-ZSH_ROAST_NON_ENGLISH=1
-for typed in "مرحبا" "привет" "γειά" "你好" "こんにちは" "한글" "नमस्ते" "café" "bonjour" "hola" "hallo" "ciao"; do
-  _zsh_roast_select_message "$typed"
-  if [[ "$REPLY" =~ '[^ -~]' ]]; then
-    print -u2 -r -- "FAIL: selected a non-English roast for '$typed'"
-    (( failures++ ))
-  fi
-done
-
-# Level 1 must draw only from a language's first two messages.
-ZSH_ROAST_LEVEL=1
+ZSH_ROAST_TYPO_DETECTION=0
 ZSH_ROAST_AVOID_REPEATS=0
-for (( i=1; i<=20; i++ )); do
-  _zsh_roast_select_message "bonjour"
-  if [[ "$REPLY" != "${ZSH_ROAST_LANGUAGE_FRENCH[1]}" &&
-        "$REPLY" != "${ZSH_ROAST_LANGUAGE_FRENCH[2]}" ]]; then
-    print -u2 -r -- "FAIL: level 1 selected an unexpected French roast"
+ZSH_ROAST_LEVEL=1
+ZSH_ROAST_NON_ENGLISH=1
+
+# For every language, level 1 may only select from entries 1-4.
+for typed in "مرحبا" "привет" "γειά" "你好" "こんにちは" "한글" "नमस्ते" "café" bonjour hola hallo ciao; do
+  _zsh_roast_select_message "$typed"
+  if [[ "$REPLY" != "${ZSH_ROAST_NON_ENGLISH_MESSAGES[1]}" &&
+        "$REPLY" != "${ZSH_ROAST_NON_ENGLISH_MESSAGES[2]}" &&
+        "$REPLY" != "${ZSH_ROAST_NON_ENGLISH_MESSAGES[3]}" &&
+        "$REPLY" != "${ZSH_ROAST_NON_ENGLISH_MESSAGES[4]}" ]]; then
+    print -u2 -r -- "FAIL: '$typed' selected a message outside the shared level-1 pool"
     (( failures++ ))
   fi
 done
 
-# Disabling localized messages must revert to an ordinary roast.
+# Disabling special selection restores the usual message pool.
 ZSH_ROAST_NON_ENGLISH=0
-_zsh_roast_select_message "bonjour"
-if [[ "$REPLY" == "${ZSH_ROAST_LANGUAGE_FRENCH[1]}" ||
-      "$REPLY" == "${ZSH_ROAST_LANGUAGE_FRENCH[2]}" ]]; then
-  print -u2 -r -- "FAIL: localization remained active after disabling"
-  (( failures++ ))
-fi
+_zsh_roast_select_message bonjour
+for roast in "${ZSH_ROAST_NON_ENGLISH_MESSAGES[@]}"; do
+  if [[ "$REPLY" == "$roast" ]]; then
+    print -u2 -r -- "FAIL: special pool active after disabling"
+    (( failures++ ))
+    break
+  fi
+done
 
 if (( failures )); then
-  print -u2 -r -- "$failures multilingual test(s) failed"
+  print -u2 -r -- "$failures non-English roast test(s) failed"
   exit 1
 fi
-print -r -- "Multilingual tests passed"
+print -r -- "Non-English roast tests passed"
