@@ -4,9 +4,9 @@ Insult ZSH is a fun and entertaining plugin for ZSH that displays random insults
 
 ## Features
 
-- Displays random insults every time you open a new terminal session or run the `insult` command.
-- Provides a collection of hilarious and creative insults to lighten up your coding environment.
-- Easy to install and configure.
+- Displays configurable roasts when Zsh cannot find a command.
+- Provides context-aware messages, typo suggestions, and a shared English-language roast pool for non-English commands.
+- Preserves an existing `command_not_found_handler` and needs no external dependencies.
 
 ## Installation
 
@@ -62,13 +62,33 @@ There are several ways to install the Insult ZSH plugin:
 
 ## Usage
 
-Once the Insult ZSH plugin is installed, it will automatically display a random insult every time you open a new terminal session.
+Once installed, the plugin responds when you enter a command that cannot be found, for example `gti` instead of `git`. It does not display a roast merely from opening a terminal, nor does it provide an `insult` command.
 
-You can also manually trigger an insult by running the `insult` command in your terminal.
+## Non-English command roasts
+
+Every recognized non-English command uses **one shared pool of English-language
+insults**. There is no language identification, and no messages are specific to
+a language or script. For example, unrecognized commands such as
+`مرحبا`, `привет`, `こんにちは`, and `café` all use the same pool.
+A possible response is "Congratulations, you've internationalized an error."
+
+A missing command name containing any character outside the printable ASCII
+range is treated as non-English. A short explicit list of ASCII-only words,
+including `bonjour`, `hola`, `hallo`, and `ciao`, is also recognized.
+Other ASCII-only foreign words cannot be detected reliably without a dictionary.
+The original command name is displayed unchanged.
+
+The special pool respects `ZSH_ROAST_LEVEL` (1=dry, 2=sarcastic, 3=hostile),
+`ZSH_ROAST_CHANCE`, and repeat avoidance. Set `ZSH_ROAST_NON_ENGLISH=0` in
+the plugin configuration to disable it. To customize the messages, edit
+`ZSH_ROAST_NON_ENGLISH_MESSAGES`.
+
+Only missing executable names are checked, not arguments to valid commands.
+No external dependencies are required.
 
 ## Customization
 
-If you want to add your own insults or modify the existing ones, you can edit the `insult-zsh.plugin.zsh` file. The insults are stored in an array called `insults`. Feel free to add, remove, or customize the insults to your liking.
+If you want to add your own insults or modify the existing ones, you can edit the `insult-zsh.plugin.zsh` file. The messages are stored in `ZSH_ROAST_*` arrays. Feel free to add, remove, or customize the insults to your liking.
 
 ## Contributing
 

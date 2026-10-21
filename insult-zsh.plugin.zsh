@@ -46,6 +46,10 @@ typeset -gi ZSH_ROAST_SHOW_COMMAND=1
 # Enable ANSI colors.
 typeset -gi ZSH_ROAST_COLOR=1
 
+# Enable one English-language roast pool for all recognized non-English commands.
+# Match names outside printable ASCII, plus a few known ASCII-only words.
+typeset -gi ZSH_ROAST_NON_ENGLISH=1
+
 # Enable command-specific jokes.
 typeset -gi ZSH_ROAST_CONTEXTUAL=1
 
@@ -226,6 +230,30 @@ typeset -ga ZSH_ROAST_SCIENCE=(
   "The collaboration has declined to approve this result."
   "Your executable candidate has been classified as background."
   "We need more luminosity. Or a valid command."
+)
+
+
+# =============================================================================
+# NON-ENGLISH COMMAND ROASTS (ALWAYS IN ENGLISH)
+# =============================================================================
+#
+# All languages and scripts use this one pool of English messages.
+# Entries 1-4 are dry, 5-8 sarcastic, and 9-12 hostile.
+# Each severity level also includes the lower-severity messages.
+
+typeset -ga ZSH_ROAST_NON_ENGLISH_MESSAGES=(
+  "Unicode is working. Your command is not."
+  "The shell searched PATH, not a dictionary."
+  "Valid characters. Missing executable."
+  "Your command is multilingual. Your binary is nonexistent."
+  "The terminal supports every alphabet except imaginary executables."
+  "Your keyboard traveled the world. The command never left your imagination."
+  "That was an impressive language switch for a program that doesn't exist."
+  "The shell appreciates linguistic diversity, but it still needs an executable."
+  "You can change the language, not the fact that this command is nonsense."
+  "Congratulations, you've internationalized an error."
+  "Even /dev/null refuses to translate this disaster into a valid command."
+  "Your keyboard has more languages than your command has working instructions."
 )
 
 # =============================================================================
@@ -996,25 +1024,55 @@ _zsh_roast_build_pool() {
   reply=("${pool[@]}")
 }
 
+
+# =============================================================================
+# NON-ENGLISH COMMAND DETECTION
+# =============================================================================
+
+_zsh_roast_is_non_english() {
+  local typed="$1"
+
+  # We classify no individual language or script. Under C collation,
+  # any character outside printable ASCII (space through tilde) matches.
+  local LC_ALL=C
+  [[ "$typed" == *[^\\ -~]* ]] && return 0
+
+  # A few familiar ASCII-only words are explicitly recognized.
+  # Arbitrary ASCII-only foreign words cannot be identified reliably.
+  case "${typed:l}" in
+    bonjour|bonsoir|merci|salut|au-revoir|\
+    hola|gracias|adios|buenos-dias|\
+    hallo|danke|tschuss|\
+    ciao|grazie|arrivederci)
+      return 0 ;;
+  esac
+
+  return 1
+}
+
+_zsh_roast_pick_non_english() {
+  local -i limit=$(( ZSH_ROAST_LEVEL * 4 ))
+  (( limit > ${#ZSH_ROAST_NON_ENGLISH_MESSAGES[@]} )) &&
+    limit=${#ZSH_ROAST_NON_ENGLISH_MESSAGES[@]}
+  (( limit >= 1 )) || return 1
+
+  _zsh_roast_pick_from_pool "${ZSH_ROAST_NON_ENGLISH_MESSAGES[1,$limit]}"
+}
+
 # =============================================================================
 # RANDOM MESSAGE SELECTION
 # =============================================================================
 
-_zsh_roast_pick() {
-  local -a pool
+_zsh_roast_pick_from_pool() {
+  local -a pool=("$@")
   local roast=""
   local -i attempts=0
   local -i max_attempts=8
   local -i index
 
-  _zsh_roast_build_pool
-  pool=("${reply[@]}")
-
-  (( ${#pool[@]} )) ||
-    return 1
+  (( ${#pool[@]} )) || return 1
 
   while (( attempts < max_attempts )); do
-
     index=$(( RANDOM % ${#pool[@]} + 1 ))
     roast="${pool[$index]}"
 
@@ -1029,8 +1087,12 @@ _zsh_roast_pick() {
 
   _ZSH_ROAST_LAST_MESSAGE="$roast"
   REPLY="$roast"
-
   return 0
+}
+
+_zsh_roast_pick() {
+  _zsh_roast_build_pool
+  _zsh_roast_pick_from_pool "${reply[@]}"
 }
 
 # =============================================================================
@@ -1044,15 +1106,23 @@ _zsh_roast_select_message() {
 
   _ZSH_ROAST_LAST_SUGGESTION=""
 
-  # Infer likely intended command.
+  # Infer likely intended command, even if a non-English roast takes priority.
   if _zsh_roast_find_typo "$typed"; then
     intended="$REPLY"
+    _ZSH_ROAST_LAST_SUGGESTION="$intended"
+  fi
+
+  # Every non-English command uses the same English-language roast pool.
+  # Only the missing executable name is checked, never its arguments.
+  if (( ZSH_ROAST_NON_ENGLISH )) &&
+     _zsh_roast_is_non_english "$typed"; then
+    if _zsh_roast_pick_non_english; then
+      return 0
+    fi
   fi
 
   # Prefer a contextual roast based on the inferred command.
   if [[ -n "$intended" ]]; then
-
-    _ZSH_ROAST_LAST_SUGGESTION="$intended"
 
     if (( ZSH_ROAST_CONTEXTUAL )); then
 
