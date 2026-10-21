@@ -40,6 +40,40 @@ if _zsh_roast_detect_language "qwerty"; then
   (( failures++ ))
 fi
 
+
+# All curated language-specific roast messages must remain ASCII English.
+# Non-English characters remain valid in commands, but not roast text.
+typeset -a all_language_roasts=(
+  "${ZSH_ROAST_LANGUAGE_ARABIC[@]}"
+  "${ZSH_ROAST_LANGUAGE_CYRILLIC[@]}"
+  "${ZSH_ROAST_LANGUAGE_GREEK[@]}"
+  "${ZSH_ROAST_LANGUAGE_CHINESE[@]}"
+  "${ZSH_ROAST_LANGUAGE_JAPANESE[@]}"
+  "${ZSH_ROAST_LANGUAGE_KOREAN[@]}"
+  "${ZSH_ROAST_LANGUAGE_DEVANAGARI[@]}"
+  "${ZSH_ROAST_LANGUAGE_LATIN[@]}"
+  "${ZSH_ROAST_LANGUAGE_FRENCH[@]}"
+  "${ZSH_ROAST_LANGUAGE_SPANISH[@]}"
+  "${ZSH_ROAST_LANGUAGE_GERMAN[@]}"
+  "${ZSH_ROAST_LANGUAGE_ITALIAN[@]}"
+)
+for roast in "${all_language_roasts[@]}"; do
+  if [[ "$roast" =~ '[^ -~]' ]]; then
+    print -u2 -r -- "FAIL: found non-ASCII characters in a roast: $roast"
+    (( failures++ ))
+  fi
+done
+
+# The selected message must also be in English for every detected script.
+ZSH_ROAST_NON_ENGLISH=1
+for typed in "مرحبا" "привет" "γειά" "你好" "こんにちは" "한글" "नमस्ते" "café" "bonjour" "hola" "hallo" "ciao"; do
+  _zsh_roast_select_message "$typed"
+  if [[ "$REPLY" =~ '[^ -~]' ]]; then
+    print -u2 -r -- "FAIL: selected a non-English roast for '$typed'"
+    (( failures++ ))
+  fi
+done
+
 # Level 1 must draw only from a language's first two messages.
 ZSH_ROAST_LEVEL=1
 ZSH_ROAST_AVOID_REPEATS=0
