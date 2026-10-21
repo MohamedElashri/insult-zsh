@@ -46,7 +46,7 @@ typeset -gi ZSH_ROAST_SHOW_COMMAND=1
 # Enable ANSI colors.
 typeset -gi ZSH_ROAST_COLOR=1
 
-# Enable language-aware roasts for command names that use recognizable
+# Enable English-language, script-aware roasts for command names that use recognizable
 # non-Latin scripts, accented Latin letters, or a small set of known words.
 # Script detection is approximate; ASCII-only words cannot be inferred generally.
 typeset -gi ZSH_ROAST_NON_ENGLISH=1
@@ -235,75 +235,77 @@ typeset -ga ZSH_ROAST_SCIENCE=(
 
 
 # =============================================================================
-# NON-ENGLISH ROAST POOLS
+# ENGLISH ROASTS FOR NON-ENGLISH COMMANDS
 # =============================================================================
 #
+# All roast messages are English. The detected language or script only
+# selects the appropriate themed pool; the command itself is printed unchanged.
 # Six entries per group, in ascending intensity:
 #   1-2 dry, 3-4 sarcastic, 5-6 hostile.
 # Each level includes messages from its own and lower intensity levels.
 # Unicode scripts are clues, not definitive language identification.
 
 typeset -ga ZSH_ROAST_LANGUAGE_ARABIC=(
-  "الأمر ده مش موجود. حتى PATH مش لاقيه."
-  "الصدفة مش بديل عن اسم برنامج صحيح."
-  "هو إحنا بنترجم الأوامر ولا بنخترعها؟"
-  "التيرمنال فهم الكلام، بس مش مقتنع بالأمر."
-  "حتى /dev/null مش عايز يستقبل الاختراع ده."
-  "الكيبورد بريء. المشكلة في اللي كتب الأمر."
+  "The Arabic script is impressive. Your executable is imaginary."
+  "Your keyboard switched scripts; your command forgot to exist."
+  "Right-to-left typing, straight-to-nowhere execution."
+  "That was fluent Unicode and completely fictional shell syntax."
+  "Even a thousand and one nights couldn't invent this binary."
+  "Your command crossed the language barrier and crashed into reality."
 )
 
 typeset -ga ZSH_ROAST_LANGUAGE_CYRILLIC=(
-  "Команда не найдена. Словарь тут не поможет."
-  "Терминал проверил PATH и ничего не нашёл."
-  "Уверенность впечатляет. Исполняемого файла нет."
-  "Это не команда, а очень смелая гипотеза."
-  "Даже /dev/null не хочет иметь с этим дела."
-  "Клавиатура сделала всё правильно. А вот ты нет."
+  "The Cyrillic alphabet is real. Your executable is not."
+  "The shell searched every path. Not a single byte of luck."
+  "Your keyboard went international; the binary never showed up."
+  "That's a bold use of Cyrillic for a command that doesn't exist."
+  "Even the coldest server would reject this command."
+  "Your confidence survived the translation. The command did not."
 )
 
 typeset -ga ZSH_ROAST_LANGUAGE_GREEK=(
-  "Η εντολή δεν βρέθηκε. Το PATH συμφωνεί."
-  "Το τερματικό περίμενε πρόγραμμα, όχι έμπνευση."
-  "Ωραία ιδέα. Κρίμα που δεν υπάρχει."
-  "Αυτό είναι περισσότερο ποίηση παρά εντολή."
-  "Ούτε το /dev/null δεν θέλει αυτή την εντολή."
-  "Το πληκτρολόγιο αξίζει καλύτερη μεταχείριση."
+  "The Greek alphabet is ancient. This command is nonexistent."
+  "Not even the gods of PATH have heard of this executable."
+  "That's one way to make a command a Greek tragedy."
+  "Socrates would have asked whether this command actually exists."
+  "Zeus has issued a thunderbolt of exit status 127."
+  "Your command belongs in mythology, not in a terminal."
 )
 
 typeset -ga ZSH_ROAST_LANGUAGE_CHINESE=(
-  "找不到这个命令，PATH 也没见过它。"
-  "终端需要可执行文件，不需要灵感。"
-  "想法很大胆，可惜程序不存在。"
-  "你写得很自信，系统却完全不认识。"
-  "连 /dev/null 都不想收留这个命令。"
-  "键盘已经尽力了，问题不在键盘。"
+  "Those Han characters are valid. Your executable isn't."
+  "The shell searched PATH, not a character dictionary."
+  "Beautiful characters, absolutely no binary behind them."
+  "Your terminal supports Unicode, not wishful thinking."
+  "Even an army of processes couldn't locate that command."
+  "A thousand characters of confidence, zero executable files."
 )
 
 typeset -ga ZSH_ROAST_LANGUAGE_JAPANESE=(
-  "そのコマンドは見つかりません。PATH もお手上げです。"
-  "端末が探したのは実行ファイルです。"
-  "発想は立派ですが、コマンドは架空です。"
-  "自信満々ですね。実行ファイルはありません。"
-  "/dev/null にさえ断られそうなコマンドです。"
-  "キーボードに責任を押し付けないでください。"
+  "Kana looks fine. The missing executable does not."
+  "The shell understands Unicode; it still can't find that command."
+  "That command has excellent character design and no implementation."
+  "Your terminal is not an anime protagonist. It cannot summon binaries."
+  "Not even a final boss would fear this nonexistent executable."
+  "Your command has a dramatic entrance and an immediate exit 127."
 )
 
 typeset -ga ZSH_ROAST_LANGUAGE_KOREAN=(
-  "명령어를 찾을 수 없습니다. PATH에도 없습니다."
-  "터미널은 실행 파일을 기다리고 있었습니다."
-  "아이디어는 좋지만 명령어는 존재하지 않습니다."
-  "자신감은 넘치는데 실행 파일은 없네요."
-  "/dev/null조차 이 명령어를 거절하겠네요."
-  "키보드는 최선을 다했습니다. 문제는 다른 곳에 있습니다."
+  "Hangul is elegantly designed. This command is not."
+  "The shell can read those characters. It can't find the program."
+  "Impressive typing. Unimpressive executable availability."
+  "Your command has perfect Unicode and zero deployment."
+  "Even the kernel won't pretend this binary exists."
+  "Your keyboard passed the test. Your command failed spectacularly."
 )
 
 typeset -ga ZSH_ROAST_LANGUAGE_DEVANAGARI=(
-  "यह कमांड नहीं मिली। PATH भी खाली हाथ लौटा।"
-  "टर्मिनल को प्रोग्राम चाहिए, कल्पना नहीं।"
-  "विचार अच्छा है, बस कमांड अस्तित्व में नहीं है।"
-  "भरोसा पूरा है, लेकिन एक्जीक्यूटेबल गायब है।"
-  "/dev/null भी इस कमांड से दूर रहना चाहेगा।"
-  "कीबोर्ड ने काम किया। गलती कहीं और है।"
+  "Devanagari works fine. Your executable is still missing."
+  "The script is real; the command exists only in theory."
+  "That's a lot of confidence for zero matching binaries."
+  "Your terminal supports Unicode, not commands from imagination."
+  "Even the most patient shell has no answer for this invention."
+  "Your keyboard discovered a new script, not a new executable."
 )
 
 typeset -ga ZSH_ROAST_LANGUAGE_LATIN=(
@@ -316,39 +318,39 @@ typeset -ga ZSH_ROAST_LANGUAGE_LATIN=(
 )
 
 typeset -ga ZSH_ROAST_LANGUAGE_FRENCH=(
-  "Commande introuvable. Même le PATH ne la connaît pas."
-  "Le terminal attendait un programme, pas une salutation."
-  "Très élégant. Dommage que la commande n'existe pas."
-  "Le shell admire votre confiance, pas votre commande."
-  "Même /dev/null refuse cette idée."
-  "Votre clavier mérite de meilleures instructions."
+  "Bonjour to you too. Your executable didn't show up."
+  "The shell searched PATH, not a French phrasebook."
+  "Very chic. Still not a command."
+  "Your command has style, but apparently no implementation."
+  "Even the Eiffel Tower has a better execution plan."
+  "Your command surrendered before the first instruction."
 )
 
 typeset -ga ZSH_ROAST_LANGUAGE_SPANISH=(
-  "Comando no encontrado. PATH tampoco lo conoce."
-  "La terminal esperaba un programa, no un saludo."
-  "Qué elegante. Lástima que el comando no exista."
-  "Mucha confianza, pero ningún ejecutable."
-  "Ni /dev/null quiere recibir ese invento."
-  "El teclado hizo su trabajo. Tú no tanto."
+  "Hola. The shell says it has never met that command."
+  "Your executable is missing in every language."
+  "Nice greeting. Terrible deployment strategy."
+  "Your command has all the confidence of a telenovela plot twist."
+  "Even a fiesta can't celebrate an executable that doesn't exist."
+  "Your command just took a one-way trip to exit status 127."
 )
 
 typeset -ga ZSH_ROAST_LANGUAGE_GERMAN=(
-  "Befehl nicht gefunden. PATH kennt ihn auch nicht."
-  "Das Terminal wollte ein Programm, keine Begrüßung."
-  "Schöne Idee. Schade, dass der Befehl nicht existiert."
-  "Viel Selbstvertrauen, aber keine ausführbare Datei."
-  "Nicht einmal /dev/null will diesen Befehl."
-  "Die Tastatur kann nichts für diesen Unsinn."
+  "Guten Tag. Unfortunately, the executable is absent."
+  "The shell checked PATH with great precision. Still nothing."
+  "Very efficient way to discover a command that doesn't exist."
+  "Your command has German engineering vibes and imaginary internals."
+  "Even an instruction manual couldn't locate that executable."
+  "Your command failed the quality inspection before startup."
 )
 
 typeset -ga ZSH_ROAST_LANGUAGE_ITALIAN=(
-  "Comando non trovato. Anche PATH conferma."
-  "Il terminale aspettava un programma, non un saluto."
-  "Bella idea. Peccato che il comando non esista."
-  "Grande sicurezza, zero eseguibili."
-  "Neanche /dev/null vuole questo comando."
-  "La tastiera ha fatto il suo lavoro. Tu un po' meno."
+  "Ciao. Your command said hello and the shell said goodbye."
+  "Nice word. No executable found."
+  "That command has flair, but not a binary."
+  "Even the best espresso won't wake up this nonexistent process."
+  "Your command is al dente: unfinished and impossible to execute."
+  "The shell rejected your masterpiece before the first instruction."
 )
 
 # =============================================================================
@@ -1240,7 +1242,7 @@ _zsh_roast_select_message() {
     _ZSH_ROAST_LAST_SUGGESTION="$intended"
   fi
 
-  # Recognizable non-English command names get their own messages.
+  # Recognizable non-English command names get English-language themed roasts.
   # This only examines the missing executable ($1), not its arguments.
   if (( ZSH_ROAST_NON_ENGLISH )) &&
      _zsh_roast_detect_language "$typed"; then
