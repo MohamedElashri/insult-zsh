@@ -46,6 +46,11 @@ typeset -gi ZSH_ROAST_SHOW_COMMAND=1
 # Enable ANSI colors.
 typeset -gi ZSH_ROAST_COLOR=1
 
+# Enable language-aware roasts for command names that use recognizable
+# non-Latin scripts, accented Latin letters, or a small set of known words.
+# Script detection is approximate; ASCII-only words cannot be inferred generally.
+typeset -gi ZSH_ROAST_NON_ENGLISH=1
+
 # Enable command-specific jokes.
 typeset -gi ZSH_ROAST_CONTEXTUAL=1
 
@@ -226,6 +231,124 @@ typeset -ga ZSH_ROAST_SCIENCE=(
   "The collaboration has declined to approve this result."
   "Your executable candidate has been classified as background."
   "We need more luminosity. Or a valid command."
+)
+
+
+# =============================================================================
+# NON-ENGLISH ROAST POOLS
+# =============================================================================
+#
+# Six entries per group, in ascending intensity:
+#   1-2 dry, 3-4 sarcastic, 5-6 hostile.
+# Each level includes messages from its own and lower intensity levels.
+# Unicode scripts are clues, not definitive language identification.
+
+typeset -ga ZSH_ROAST_LANGUAGE_ARABIC=(
+  "الأمر ده مش موجود. حتى PATH مش لاقيه."
+  "الصدفة مش بديل عن اسم برنامج صحيح."
+  "هو إحنا بنترجم الأوامر ولا بنخترعها؟"
+  "التيرمنال فهم الكلام، بس مش مقتنع بالأمر."
+  "حتى /dev/null مش عايز يستقبل الاختراع ده."
+  "الكيبورد بريء. المشكلة في اللي كتب الأمر."
+)
+
+typeset -ga ZSH_ROAST_LANGUAGE_CYRILLIC=(
+  "Команда не найдена. Словарь тут не поможет."
+  "Терминал проверил PATH и ничего не нашёл."
+  "Уверенность впечатляет. Исполняемого файла нет."
+  "Это не команда, а очень смелая гипотеза."
+  "Даже /dev/null не хочет иметь с этим дела."
+  "Клавиатура сделала всё правильно. А вот ты нет."
+)
+
+typeset -ga ZSH_ROAST_LANGUAGE_GREEK=(
+  "Η εντολή δεν βρέθηκε. Το PATH συμφωνεί."
+  "Το τερματικό περίμενε πρόγραμμα, όχι έμπνευση."
+  "Ωραία ιδέα. Κρίμα που δεν υπάρχει."
+  "Αυτό είναι περισσότερο ποίηση παρά εντολή."
+  "Ούτε το /dev/null δεν θέλει αυτή την εντολή."
+  "Το πληκτρολόγιο αξίζει καλύτερη μεταχείριση."
+)
+
+typeset -ga ZSH_ROAST_LANGUAGE_CHINESE=(
+  "找不到这个命令，PATH 也没见过它。"
+  "终端需要可执行文件，不需要灵感。"
+  "想法很大胆，可惜程序不存在。"
+  "你写得很自信，系统却完全不认识。"
+  "连 /dev/null 都不想收留这个命令。"
+  "键盘已经尽力了，问题不在键盘。"
+)
+
+typeset -ga ZSH_ROAST_LANGUAGE_JAPANESE=(
+  "そのコマンドは見つかりません。PATH もお手上げです。"
+  "端末が探したのは実行ファイルです。"
+  "発想は立派ですが、コマンドは架空です。"
+  "自信満々ですね。実行ファイルはありません。"
+  "/dev/null にさえ断られそうなコマンドです。"
+  "キーボードに責任を押し付けないでください。"
+)
+
+typeset -ga ZSH_ROAST_LANGUAGE_KOREAN=(
+  "명령어를 찾을 수 없습니다. PATH에도 없습니다."
+  "터미널은 실행 파일을 기다리고 있었습니다."
+  "아이디어는 좋지만 명령어는 존재하지 않습니다."
+  "자신감은 넘치는데 실행 파일은 없네요."
+  "/dev/null조차 이 명령어를 거절하겠네요."
+  "키보드는 최선을 다했습니다. 문제는 다른 곳에 있습니다."
+)
+
+typeset -ga ZSH_ROAST_LANGUAGE_DEVANAGARI=(
+  "यह कमांड नहीं मिली। PATH भी खाली हाथ लौटा।"
+  "टर्मिनल को प्रोग्राम चाहिए, कल्पना नहीं।"
+  "विचार अच्छा है, बस कमांड अस्तित्व में नहीं है।"
+  "भरोसा पूरा है, लेकिन एक्जीक्यूटेबल गायब है।"
+  "/dev/null भी इस कमांड से दूर रहना चाहेगा।"
+  "कीबोर्ड ने काम किया। गलती कहीं और है।"
+)
+
+typeset -ga ZSH_ROAST_LANGUAGE_LATIN=(
+  "An accent does not turn a word into an executable."
+  "Unicode support is working. Your command is not."
+  "Beautiful typography. Imaginary binary."
+  "The shell appreciates the international flair, not the syntax."
+  "You translated the typo, not the solution."
+  "Your keyboard speaks many languages. None of them are executable."
+)
+
+typeset -ga ZSH_ROAST_LANGUAGE_FRENCH=(
+  "Commande introuvable. Même le PATH ne la connaît pas."
+  "Le terminal attendait un programme, pas une salutation."
+  "Très élégant. Dommage que la commande n'existe pas."
+  "Le shell admire votre confiance, pas votre commande."
+  "Même /dev/null refuse cette idée."
+  "Votre clavier mérite de meilleures instructions."
+)
+
+typeset -ga ZSH_ROAST_LANGUAGE_SPANISH=(
+  "Comando no encontrado. PATH tampoco lo conoce."
+  "La terminal esperaba un programa, no un saludo."
+  "Qué elegante. Lástima que el comando no exista."
+  "Mucha confianza, pero ningún ejecutable."
+  "Ni /dev/null quiere recibir ese invento."
+  "El teclado hizo su trabajo. Tú no tanto."
+)
+
+typeset -ga ZSH_ROAST_LANGUAGE_GERMAN=(
+  "Befehl nicht gefunden. PATH kennt ihn auch nicht."
+  "Das Terminal wollte ein Programm, keine Begrüßung."
+  "Schöne Idee. Schade, dass der Befehl nicht existiert."
+  "Viel Selbstvertrauen, aber keine ausführbare Datei."
+  "Nicht einmal /dev/null will diesen Befehl."
+  "Die Tastatur kann nichts für diesen Unsinn."
+)
+
+typeset -ga ZSH_ROAST_LANGUAGE_ITALIAN=(
+  "Comando non trovato. Anche PATH conferma."
+  "Il terminale aspettava un programma, non un saluto."
+  "Bella idea. Peccato che il comando non esista."
+  "Grande sicurezza, zero eseguibili."
+  "Neanche /dev/null vuole questo comando."
+  "La tastiera ha fatto il suo lavoro. Tu un po' meno."
 )
 
 # =============================================================================
@@ -996,25 +1119,88 @@ _zsh_roast_build_pool() {
   reply=("${pool[@]}")
 }
 
+
+# =============================================================================
+# NON-ENGLISH COMMAND DETECTION
+# =============================================================================
+
+_zsh_roast_detect_language() {
+  local typed="$1"
+
+  # ASCII words need an explicit dictionary: script alone tells us nothing.
+  # Keep this small to avoid guessing languages from arbitrary executables.
+  case "${typed:l}" in
+    bonjour|bonsoir|merci|salut|au-revoir)
+      REPLY="french" ;;
+    hola|gracias|adios|adiós|buenos-dias)
+      REPLY="spanish" ;;
+    hallo|danke|tschuss|tschüss)
+      REPLY="german" ;;
+    ciao|grazie|arrivederci)
+      REPLY="italian" ;;
+    *)
+      # Japanese kana must precede Han (kanji), and all script-specific
+      # matches must precede the generic accented-Latin fallback.
+      case "$typed" in
+        *[ぁ-ゟァ-ヿ]*) REPLY="japanese" ;;
+        *[가-힣ㄱ-ㅎㅏ-ㅣ]*) REPLY="korean" ;;
+        *[؀-ۿݐ-ݿ]*) REPLY="arabic" ;;
+        *[ऀ-ॿ]*) REPLY="devanagari" ;;
+        *[Α-Ͽ]*) REPLY="greek" ;;
+        *[Ѐ-ӿ]*) REPLY="cyrillic" ;;
+        *[一-鿿]*) REPLY="chinese" ;;
+        *[À-ÖØ-öø-ÿĀ-ſ]*) REPLY="latin" ;;
+        *) return 1 ;;
+      esac
+      ;;
+  esac
+
+  return 0
+}
+
+_zsh_roast_pick_language() {
+  local language="$1"
+  local -a pool=()
+
+  case "$language" in
+    arabic) pool=("${ZSH_ROAST_LANGUAGE_ARABIC[@]}") ;;
+    cyrillic) pool=("${ZSH_ROAST_LANGUAGE_CYRILLIC[@]}") ;;
+    greek) pool=("${ZSH_ROAST_LANGUAGE_GREEK[@]}") ;;
+    chinese) pool=("${ZSH_ROAST_LANGUAGE_CHINESE[@]}") ;;
+    japanese) pool=("${ZSH_ROAST_LANGUAGE_JAPANESE[@]}") ;;
+    korean) pool=("${ZSH_ROAST_LANGUAGE_KOREAN[@]}") ;;
+    devanagari) pool=("${ZSH_ROAST_LANGUAGE_DEVANAGARI[@]}") ;;
+    latin) pool=("${ZSH_ROAST_LANGUAGE_LATIN[@]}") ;;
+    french) pool=("${ZSH_ROAST_LANGUAGE_FRENCH[@]}") ;;
+    spanish) pool=("${ZSH_ROAST_LANGUAGE_SPANISH[@]}") ;;
+    german) pool=("${ZSH_ROAST_LANGUAGE_GERMAN[@]}") ;;
+    italian) pool=("${ZSH_ROAST_LANGUAGE_ITALIAN[@]}") ;;
+    *) return 1 ;;
+  esac
+
+  (( ${#pool[@]} >= 2 )) || return 1
+
+  local -i limit=$(( ZSH_ROAST_LEVEL * 2 ))
+  (( limit > ${#pool[@]} )) && limit=${#pool[@]}
+  (( limit >= 1 )) || return 1
+
+  _zsh_roast_pick_from_pool "${pool[1,$limit]}"
+}
+
 # =============================================================================
 # RANDOM MESSAGE SELECTION
 # =============================================================================
 
-_zsh_roast_pick() {
-  local -a pool
+_zsh_roast_pick_from_pool() {
+  local -a pool=("$@")
   local roast=""
   local -i attempts=0
   local -i max_attempts=8
   local -i index
 
-  _zsh_roast_build_pool
-  pool=("${reply[@]}")
-
-  (( ${#pool[@]} )) ||
-    return 1
+  (( ${#pool[@]} )) || return 1
 
   while (( attempts < max_attempts )); do
-
     index=$(( RANDOM % ${#pool[@]} + 1 ))
     roast="${pool[$index]}"
 
@@ -1029,8 +1215,12 @@ _zsh_roast_pick() {
 
   _ZSH_ROAST_LAST_MESSAGE="$roast"
   REPLY="$roast"
-
   return 0
+}
+
+_zsh_roast_pick() {
+  _zsh_roast_build_pool
+  _zsh_roast_pick_from_pool "${reply[@]}"
 }
 
 # =============================================================================
@@ -1044,15 +1234,23 @@ _zsh_roast_select_message() {
 
   _ZSH_ROAST_LAST_SUGGESTION=""
 
-  # Infer likely intended command.
+  # Infer likely intended command, even if a localized roast takes priority.
   if _zsh_roast_find_typo "$typed"; then
     intended="$REPLY"
+    _ZSH_ROAST_LAST_SUGGESTION="$intended"
+  fi
+
+  # Recognizable non-English command names get their own messages.
+  # This only examines the missing executable ($1), not its arguments.
+  if (( ZSH_ROAST_NON_ENGLISH )) &&
+     _zsh_roast_detect_language "$typed"; then
+    if _zsh_roast_pick_language "$REPLY"; then
+      return 0
+    fi
   fi
 
   # Prefer a contextual roast based on the inferred command.
   if [[ -n "$intended" ]]; then
-
-    _ZSH_ROAST_LAST_SUGGESTION="$intended"
 
     if (( ZSH_ROAST_CONTEXTUAL )); then
 
