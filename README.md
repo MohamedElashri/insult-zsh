@@ -5,7 +5,7 @@ Insult ZSH is a fun and entertaining plugin for ZSH that displays random insults
 ## Features
 
 - Displays configurable roasts when Zsh cannot find a command.
-- Provides context-aware messages, typo suggestions, and multilingual roasts.
+- Provides context-aware messages, typo suggestions, and English-language roasts tailored to non-English commands.
 - Preserves an existing `command_not_found_handler` and needs no external dependencies.
 
 ## Installation
@@ -67,21 +67,24 @@ Once installed, the plugin responds when you enter a command that cannot be foun
 ## Non-English command roasts
 
 When an **unknown command name** uses a recognizable Unicode script, the plugin
-can respond with a roast in that language. It has pools for Arabic, Cyrillic
-(Russian text), Greek, Chinese Han, Japanese kana, Korean Hangul, and Devanagari
-(Hindi text). Accented Latin-script command names receive a generic Unicode
-roast. Common ASCII greetings and words such as `bonjour`, `hola`,
-`hallo`, and `ciao` have dedicated French, Spanish, German, and Italian pools.
+selects a language-specific **English-language roast**. All roast messages are
+written in English; the language or script is used only to pick the joke.
+It recognizes Arabic, Cyrillic (Russian text), Greek, Chinese Han, Japanese
+kana, Korean Hangul, and Devanagari (Hindi text). Accented Latin-script command
+names receive a generic Unicode-themed roast. Common ASCII greetings and
+words such as `bonjour`, `hola`, `hallo`, and `ciao` have dedicated
+English roast pools inspired by French, Spanish, German, and Italian.
 
-For example, typing an unrecognized `مرحبا` or `bonjour` in an interactive
-Zsh shell selects its matching roast pool. The content follows
+For example, typing an unrecognized `مرحبا` selects an English roast about
+Arabic-script commands, while `bonjour` may produce "Very chic. Still not a command."
+The original command name is still printed as typed. Roast selection follows
 `ZSH_ROAST_LEVEL` (1=dry, 2=sarcastic, 3=hostile), and the existing
 `ZSH_ROAST_CHANCE`, repeat avoidance, colors, and command suggestions remain
 in effect.
 
 Set `ZSH_ROAST_NON_ENGLISH=0` in the plugin's configuration section to disable
-language-aware selection. You can customize the
-`ZSH_ROAST_LANGUAGE_*` arrays to change the messages.
+script-aware selection. You can customize the
+`ZSH_ROAST_LANGUAGE_*` arrays to change the English-language messages.
 
 Detection is intentionally lightweight and has no external dependencies.
 It checks only **missing executable names**, not arguments to valid commands.
